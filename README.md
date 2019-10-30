@@ -1,5 +1,12 @@
 # mapper-GUI
 
+This is a Graphical User Interface for the Mapper algorithm, used in Topological Data Analysis. It is still in its initial phase; later I will add explanations about the filters, clusterings, distances and so on. 
+
+To read about Mapper, check the paper "Topological Methods for the Analysis of High Dimensional
+Data Sets and 3D Object Recognition": https://research.math.osu.edu/tgda/mapperPBG.pdf
+
+
+
 Try the online version first:
 
 https://gvituri.shinyapps.io/mapper-GUI/
