@@ -4,8 +4,9 @@ This is a Graphical User Interface for the Mapper algorithm, used in Topological
 
 To read about Mapper, check the paper "Topological Methods for the Analysis of High Dimensional
 Data Sets and 3D Object Recognition": https://research.math.osu.edu/tgda/mapperPBG.pdf
+To read about some application, check this nice article by Matt Piekenbrock, creator of the R Mapper package that I will use in my code in the next update: https://peekxc.github.io/Mapper/articles/ShapeRecognition.html
 
-
+-------------------------------------------------
 
 Try the online version first:
 
