@@ -111,7 +111,13 @@ Notice that the table showing in your right is going to be your metric space for
  See http://danifold.net/mapper/filters.html for details.
  
 - **Distance** The distance used in the calculations. All the filter functions (except "data column") will use this distance in the calculations. 
-  - **Geodesic** Construct the Relative Neighborhood Graph of your metric space and calculate the geodesic distance of this graph (the distance is the shortest path). If your data has 3 dimensions, the graph will be plotted along with your data. Try this with the flamingo dataset, for example.
+  - **Euclidean**
+  - **Geodesic** Construct the Relative Neighborhood Graph of your metric space and calculate the geodesic distance of this graph (the distance between two points is the lenght of the shortest path between them). If your data has 3 dimensions, the graph will be plotted along with your data. Try this with the flamingo dataset, for example.
+![geodesic graph example](pics/geodesic-example.png) 
+  - **Maximum**
+  - **Manhattan**
+  - **Canberra**
+  - **Cosine**
 
 ### What is being shown?
 
