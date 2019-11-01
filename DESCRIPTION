@@ -9,11 +9,11 @@ Maintainer: Guilherme Vituri F. Pinto <vituri.vituri@gmail.com>
 Description: Graphical User Interface for the Mapper and Ball Mapper algorithms with many in-built filter functions and plottings.
 Imports: igraph,TDAmapper, shiny, plotly, shinythemes, shinycssloaders, GGally, ggplot2, grnn, ggraph, 
   TDAstats, rgl, cccd, Matrix, dplyr
-LinkingTo: ---
-License: ---
+LinkingTo: 
+License: 
 BugReports: https://github.com/vituri
-Remotes: ---
-Suggests: ---
+Remotes: 
+Suggests: 
 Copyright: The Mapper method was originally developed by Gurjeet Singh, Facundo Mémoli, and Gunnar Carlsson. The software is Copyright by Guilherme Vituri F. Pinto.
 Encoding: UTF-8
 LazyData: true
