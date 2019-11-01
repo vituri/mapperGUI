@@ -23,12 +23,77 @@ library("shiny")
 runGitHub("mapper-GUI", "vituri")
 ```
 
+Alternatively, you can download the zip with all the files and run the "app.R" in your Rstudio. Make sure to install all the packages on the first lines of code.
+
+--------------------------
+
 ## Insert data tab
 
 ### Custom data or examples? = Custom
-Click on "browse" to select a ".csv" file of your interest.
+Click on "browse" to select a ".csv" file of your interest. This file can contain colums with strings.
+
+- [X] **Header** 
+Mark if the .csv has a header (a first line with column names). 
+
+- **Separator**
+The character that separates the columns in the .csv.
+
+- **Quote** 
+The character that is used to embrace quotes.
+
+- **Decimal separator**
+The character in the .csv that is used as a decimal separator.
+
+- **Display**
+How much of the .csv to display. If "Head", just the first lines. If "All", the entire .csv.
+
+- **Normalize**
+The type of normalization in your data. "none" does nothing. "uniform" do a linear scaling such that every column has values from 0 to 1. "zscore" is the Z-Score Normalization with mean 0 and standard deviation 1. 
+
+These last two will give an error if you have non-numeric columns. Use the "Exclude columns?" to exclude these.
+
+For data that are not "geometric" (like the diabetes dataset), it is commom to use the zscore normalization. 
+
+Check, for example, https://www.codecademy.com/articles/normalization for details.
+
+- [X] **Exclude columns?**
+Choose columns to be excluded. The non-numeric columns must be excluded for the calculations. You will be able to use these excluded columns later to color the nodes later (even the non-numeric ones!).
+
+- [X] **Select fewer points?** conditional widget.
+
+If your data has too many points (more than 25000), the app is going to crash (at least in my machine it does :( ). This happens because the code calculates the distance matrix of the metric space inserted, and this matrix will be of size n^2, where n is the number of points in your data. For 25000 points, this gives a matrix of near 8gb. To avoid this, when a dataset has more than 2000 points a widget will appear with "select fewer points?" checked, and the custom value is 2000. You can increase this number at your will. These fewer points are selected via a "farthest points sample", that selects "well spreaded" points. Do some testing with the flamingo and elephant datasets.
 
 ### Custom data or examples? = Examples
+
+These are some examples to play around with the mapper.
+
+- **Cancer** dataset
+
+- **Diabetes** dataset
+
+- **Elephant** dataset
+
+- **Flaming** dataset
+
+- **Head** dataset
+
+- **Sphere** dataset
+
+n random points sampled from a 2-dimensional sphere.
+
+- **Torus** dataset
+
+n random points sampled from a torus.
+
+### What is being shown?
+
+- A plot of the first three variables of your data.
+
+- A summary of your data.
+
+- The display of your data.
+
+Notice that the table showing in your right is going to be your metric space for all the Mapper calculations.
 
 ## Mapper tab
 
