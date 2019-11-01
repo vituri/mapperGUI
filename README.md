@@ -21,5 +21,6 @@ lapply(list_of_packages,
 
 and then run the command:
 
+```R
 runGitHub( "mapper-GUI", "vituri")
-
+```
