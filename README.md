@@ -122,9 +122,11 @@ Notice that the table showing in your right is going to be your metric space for
 ### What is being shown?
 
 - The mapper plot.
+![diabetes mapper](pics/diabetes-mapper.png) 
 
 - A plot with the first three variables of your data.
 
 ## Coloring tab
 
-- **Coloring function** Choose the function to color the mapper previously constructed. The nodes will be colored by the average value that the coloring function assumes on each vertex (remember that each vertex is a cluster of the original dataset). *You will be able to select previously excluded columns, even columns of characters*. Try the diabetes database and color the nodes by the "diabetic" column. In the case of character column, the result will be a vote of each point in the vertex. In case of a tie, a "/" will appear in the legend.  
+- **Coloring function** Choose the function to color the mapper previously constructed. The nodes will be colored by the average value that the coloring function assumes on each vertex (remember that each vertex is a cluster of the original dataset). *You will be able to select previously excluded columns, even columns of characters*. Try the diabetes database and color the nodes by the "diabetic" column. In the case of character column, the result will be a vote of each point in the vertex. In case of a tie, a "/" will appear in the legend.
+![diabetes mapper](pics/diabetes-coloring.png) 
