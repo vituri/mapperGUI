@@ -8,7 +8,7 @@ Authors@R: c(person("Guilherme", "Vituri", email = "vituri.vituri@gmail.com", ro
 Maintainer: Guilherme Vituri F. Pinto <vituri.vituri@gmail.com>
 Description: Graphical User Interface for the Mapper and Ball Mapper algorithms with many in-built filter functions and plottings.
 Imports: igraph,TDAmapper, shiny, plotly, shinythemes, shinycssloaders, GGally, ggplot2, grnn, ggraph, 
-TDAstats, rgl, cccd, Matrix, dplyr
+  TDAstats, rgl, cccd, Matrix, dplyr
 LinkingTo: ---
 License: ---
 BugReports: https://github.com/vituri
