@@ -10,7 +10,7 @@ To read about some application, check this nice article by Matt Piekenbrock, cre
 
 ## How to use it
 
-Try the online:
+Try it online:
 
 https://gvituri.shinyapps.io/mapper-GUI/
 
@@ -23,8 +23,12 @@ library("shiny")
 runGitHub("mapper-GUI", "vituri")
 ```
 
-Alternatively, you can download the zip with all the files and run the "app.R" in your Rstudio. Make sure to install all the packages on the first lines of code.
-
+Alternatively, you can download the zip with all the files and run the "app.R" in your Rstudio. **Make sure to install all the packages on the first lines of code.**
+```
+library(igraph); library(TDAmapper); library(shiny); library(plotly); library(shinythemes); library(shinycssloaders)
+library(GGally); library(ggplot2); library(grnn); library(ggraph); library(TDAstats) #library(rgl)
+library(cccd); library(Matrix); library(dplyr)
+```
 --------------------------
 
 ## Insert data tab
