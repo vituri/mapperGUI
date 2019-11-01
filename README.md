@@ -52,7 +52,7 @@ The type of normalization in your data. "none" does nothing. "uniform" do a line
 
 These last two will give an error if you have non-numeric columns. Use the "Exclude columns?" to exclude these.
 
-For data that are not "geometric" (like the diabetes dataset), it is commom to use the zscore normalization. 
+For data that is not "geometric" (like the diabetes dataset), it is commom to use the zscore normalization. 
 
 Check, for example, https://www.codecademy.com/articles/normalization for details.
 
