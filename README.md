@@ -32,7 +32,7 @@ Alternatively, you can download the zip with all the files and run the "app.R" i
 ### Custom data or examples? = Custom
 Click on "browse" to select a ".csv" file of your interest. This file can contain colums with strings.
 
-- [X] **Header** 
+- **Header** 
 Mark if the .csv has a header (a first line with column names). 
 
 - **Separator**
@@ -96,6 +96,16 @@ n random points sampled from a torus.
 Notice that the table showing in your right is going to be your metric space for all the Mapper calculations.
 
 ## Mapper tab
+
+- **% overlap** The % of overlap of the intervals in your codomain. 
+
+- **Number of intervals** The number of intervals in the covering.
+
+- **Bins when clustering** The amount of bins used in the clustering algorithm. More bins will give you more vertices on the same levelset: your data will be more "spread" in vertices. Less bins will yield less vertices. Do some tests with the flamingo dataset to get a feeling. Sometimes the legs of the flamingo are glued together in the Mapper and to separate them you need to increase the number of bins.
+
+
+
+### What is being shown?
 
 ## Coloring tab
 
