@@ -1,4 +1,4 @@
-# mapper-GUI
+# mapperGUI
 
 This is a Graphical User Interface for the Mapper algorithm, used in Topological Data Analysis. It is still in its initial phase. Comments and suggestions are welcome.
 
@@ -20,8 +20,8 @@ If it doesn't work, run the commands:
 
 ```R
 install.packages("devtools") #run this just one time to install the package
-devtools::install_github("vituri/mapper-GUI") #this will install all the dependencies
-shiny::runGitHub("mapper-GUI", "vituri")
+devtools::install_github("vituri/mapperGUI") #this will install all the dependencies
+shiny::runGitHub("mapperGUI", "vituri")
 ```
 
 Alternatively, you can download the zip with all the files and run the "app.R" in your Rstudio. **Make sure to install all the packages on the first lines of code.**
