@@ -16,11 +16,12 @@ https://gvituri.shinyapps.io/mapper-GUI/
 
 This site has a limit of 25 hours of using per month, so it may not be available.
 
-If it doesn't work, run the command:
+If it doesn't work, run the commands:
 
 ```R
-library("shiny")
-runGitHub("mapper-GUI", "vituri")
+install.packages("devtools") #run this just one time to install the package
+devtools::install_github("vituri/mapper-GUI") #this will install all the dependencies
+shiny::runGitHub("mapper-GUI", "vituri")
 ```
 
 Alternatively, you can download the zip with all the files and run the "app.R" in your Rstudio. **Make sure to install all the packages on the first lines of code.**
