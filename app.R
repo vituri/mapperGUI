@@ -1,19 +1,23 @@
 library(igraph); library(TDAmapper); library(shiny); library(plotly); library(shinythemes); library(shinycssloaders)
 library(GGally); library(ggplot2); library(grnn); library(ggraph); library(TDAstats) #library(rgl)
-library(shinyWidgets); library(cccd); library(Matrix); library(dplyr)
-#### funções ----
+library(cccd); library(Matrix); library(dplyr)
+
+#library("shiny")
+#runGitHub("mapper-GUI", "vituri")
+
+#### functions ----
 normalize <- function(x) {
   return((x - min(x)) / (max(x) - min(x)))
 }
 
-distancia = function(X, M){  #retorna vetor com o quadrado da distância euclidiana de X=(x,y) ao conjunto M
+distancia = function(X, M){  #retorna vetor com a distância euclidiana de X = (x1, x2, ..., xn) ao conjunto M
   A = sqrt(colSums((t(M)-X)^2))
   return(A)
 }
 
 farthestpoints = function(M, p){  ##essa bosta dá algum pau se o input não é matrix!
   M = as.matrix(M)
-  id = array(, dim = p)
+  id = rep(0, p) ### mudei aqui!!! cuidado!!!!!
   amostra = nrow(M)
   id[1] = sample(1:amostra, 1) #; FPS[1,] = M[id[1],] #escolhe ponto aleatório de M
   B = distancia(M[id[1],], M) #distância de P1 a todos os pontos de M
@@ -32,7 +36,8 @@ farthestpoints = function(M, p){  ##essa bosta dá algum pau se o input não é 
 
 excentricity_filter = function(M, p){
   if (p != 0){
-    apply(X = M, MARGIN = 1, FUN = function(x) (sum(x^p)/nrow(M))^(1/p))
+    #    apply(X = M, MARGIN = 1, FUN = function(x) (sum(x^p)/nrow(M))^(1/p))
+    rowMeans(M^p)^(1/p)
   } else {
     apply(X = M, MARGIN = 1, FUN = max)
   }
@@ -56,17 +61,17 @@ dtm_filter = function(M, k){ #distance to measure filter
 # }
 
 cosine_distance = function(M){
- n = nrow(M)
- D = matrix(0, nrow = n, ncol = n)
- for (i in 1:n){
-   for (j in i:n){
-     a = M[i, ]
-     b = M[j, ]
-     D[i,j] = sum(a*b)/(norm(a, type = "2")*(norm(b, type = "2")))
-     D[j, i] = D[i, j]
-   }
- }
- return(D)
+  n = nrow(M)
+  D = matrix(0, nrow = n, ncol = n)
+  for (i in 1:n){
+    for (j in i:n){
+      a = M[i, ]
+      b = M[j, ]
+      D[i,j] = acos(sum(a*b)/(norm(a, type = "2")*(norm(b, type = "2"))))/pi
+      D[j, i] = D[i, j]
+    }
+  }
+  return(D)
 }
 
 sphere_sample = function(n){
@@ -81,6 +86,7 @@ torus_sample = function(n){
   return(data.frame(x = (2 + cos(v))*cos(u), y = (2 + cos(v))*sin(u), z = sin(v)))
 }
 
+#### jetcolors ---- 
 jet.colors <- #nice color pallete
   colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan",
                      "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
@@ -98,8 +104,50 @@ subcoloring = function(f, V){
 majority = function(x) { # function to get the majority (or ties) in the character filtering
   h = as.data.frame(table(x))
   id = which(h$Freq == max(h$Freq))
-  v.mean = h$x[id]
-  return(paste(sort(v.mean), collapse = "/"))
+  vertex_mean = h$x[id]
+  return(paste(sort(vertex_mean), collapse = "/"))
+}
+
+fps_with_dist_matrix = function(M, epsilon){  # M é matriz de distância de X
+  M = as.matrix(M)
+  n = nrow(M)
+  if (epsilon < min(M)) return(1:n) else {
+    id = rep(0, n) 
+    id[1] = sample(1:n, 1) # escolhe ponto aleatório de X
+    B = M[id[1], ]
+    id[2] = which.max(B) # escolhe o ponto mais distante de id[1]
+    C = M[id[2], ]
+    vec_dis = pmin(B,C)
+    id[3] = which.max(vec_dis) #; FPS[3,] = M[id[3],]
+    i = 4
+    while ((max(vec_dis) > epsilon) & i != n) {
+      C = M[id[i - 1], ]
+      vec_dis = pmin(C, vec_dis)
+      id[i] = which.max(vec_dis) #; FPS[i,] = M[id[i],]
+      i = i + 1
+    }
+    id = id[1:(i-1)]
+    return(id)
+  }
+}
+
+
+ball_mapper = function(M, epsilon, id){
+  n = length(id)
+  points_in_vertex = list()
+  for (i in 1:n){
+    points_in_vertex[[i]] = which(M[id[i], ] <= epsilon)
+  }
+  edges = matrix(NA, nrow = 0, ncol = 2)
+  for (i in 1:n){ ##otimizar? tá saindo dobrado, mas é pouca conta
+    vec = sapply(X = points_in_vertex, FUN = function(x) any(x %in% points_in_vertex[[i]]))
+    vec = which(vec == TRUE)
+    edges = rbind(edges, cbind(i, vec))
+  }
+  edges = edges[edges[,1] <= edges[,2], ]
+  mapper_graph = graph_from_edgelist(edges, directed = FALSE)
+  mapper_graph = simplify(mapper_graph, remove.loops = TRUE)
+  return(list(mapper_graph = mapper_graph, points_in_vertex = points_in_vertex))
 }
 
 #palf <- colorRampPalette(c("blue",  "green", "yellow", "orange", "red"))
@@ -132,7 +180,7 @@ ui = navbarPage(title = "Mapper", theme = shinytheme("spacelab"),
                                               tagList(
                                                 selectInput("example", "Choose example", selected = "flamingo",
                                                             choices = c(Cancer = "cancer", Diabetes = "diabetes", Elephant = "elephant", Flamingo = "flamingo", Head = "head", Sphere = "sphere",
-                                                                         Torus = "torus")
+                                                                        Torus = "torus")
                                                 ),
                                                 conditionalPanel(condition = "input.example == 'torus' | input.example == 'sphere'",
                                                                  numericInput("pointstorus", "Number of points", value = 1000, min = 20, max = 5000)
@@ -159,7 +207,7 @@ ui = navbarPage(title = "Mapper", theme = shinytheme("spacelab"),
                            ),
                            mainPanel(h2("Data input"),
                                      plotlyOutput("plot_data") %>% withSpinner(),
-                                     verbatimTextOutput("nrows"),
+                                     #                                     verbatimTextOutput("nrows"),
                                      verbatimTextOutput("summary_contents"),
                                      tableOutput("contents")
                            )
@@ -171,7 +219,7 @@ ui = navbarPage(title = "Mapper", theme = shinytheme("spacelab"),
                                         sliderInput("overlap", "% overlap", 50, min = 1, max = 100),
                                         numericInput("num_intervals", "Number of intervals", 10, min = 1, max = 500),
                                         numericInput("bins", "Bins when clustering", 12, min = 1, max = 1000),
-                                        selectInput("mapper_filter", "Filter funtion:",
+                                        selectInput("mapper_filter", "Filter function:",
                                                     c("Singular Value Decomposition" = "svd",
                                                       "Data Column" = "column", "Excentricity" = "excentricity",
                                                       "Distance to measure" = "dtm",
@@ -190,19 +238,20 @@ ui = navbarPage(title = "Mapper", theme = shinytheme("spacelab"),
                                      # verbatimTextOutput("info"),
                                      # verbatimTextOutput("info2"),
                                      # verbatimTextOutput("ele"),
-                                     plotlyOutput("plot_data_colored_as_mapper") %>% withSpinner(),
-                                     plotOutput("ph") %>% withSpinner(),
-                                     verbatimTextOutput("hover"),
-                                     verbatimTextOutput("click")
+                                     plotlyOutput("plot_data_colored_as_mapper") %>% withSpinner() #,
+                                     #                                     plotOutput("ph") %>% withSpinner(),
+                                     #                                     verbatimTextOutput("hover"),
+                                     #                                     verbatimTextOutput("click")
                            )
                          )
                 ), 
                 tabPanel("coloring", #### coloring ----
                          sidebarLayout(
                            sidebarPanel(width = 2,
-                                        selectInput("ffc", "Filter funtion:",
+                                        selectInput("ffc", "Coloring function:",
                                                     c("Singular Value Decomposition" = "svd",
                                                       "Data Column" = "column", "Excentricity" = "excentricity",
+                                                      "Distance to measure" = "dtm",
                                                       "Density" = "density"), selected = "svd"), 
                                         conditionalPanel(
                                           condition = "input.ffc == 'svd' | input.ffc == 'column' | input.ffc == 'excentricity'",
@@ -211,10 +260,30 @@ ui = navbarPage(title = "Mapper", theme = shinytheme("spacelab"),
                            ),
                            mainPanel("Coloring mapper", 
                                      plotOutput("plot_mapper_colored_as_filter") %>% withSpinner(),
-                                     plotlyOutput("plot_data_colored_as_filter") %>% withSpinner(),
-                                     plotOutput("plot_ggpairs", width = "auto") %>% withSpinner()
+                                     plotlyOutput("plot_data_colored_as_filter") %>% withSpinner()#,
+#                                     plotOutput("plot_ggpairs", width = "auto") %>% withSpinner()
                                      #                                     verbatimTextOutput("hover"),
                                      #                                     verbatimTextOutput("click")
+                           )
+                         )
+                ),
+                tabPanel("ball mapper", #### ball mapper ----
+                         sidebarLayout(
+                           sidebarPanel(width = 2,
+                                        numericInput(inputId = "epsilon", label = "Epsilon", value = 1, 
+                                                     min = 0.01, max = 10, step = 0.1),
+                                        selectInput("ffbm", "Coloring function:",
+                                                    c("Singular Value Decomposition" = "svd",
+                                                      "Data Column" = "column", "Excentricity" = "excentricity",
+                                                      "Distance to measure" = "dtm",
+                                                      "Density" = "density"), selected = "svd"), 
+                                        conditionalPanel(
+                                          condition = "input.ffbm == 'svd' | input.ffbm == 'column' | input.ffbm == 'excentricity'",
+                                          uiOutput("ffbm_column_ui")  
+                                        )
+                           ),
+                           mainPanel("Ball mapper", 
+                                     plotOutput("plot_ballmapper")
                            )
                          )
                 )
@@ -356,24 +425,18 @@ server <- function(input, output, session) {
     
     mapper_graph <- graph.adjacency(m1$adjacency, mode = "undirected")
     n <- m1$num_vertices
-    v.mean <- rep(0, n)
-    v.size <- rep(1, n)
-    for (i in 1:n) {
-      v.mean[i] <- mean((mapper_filter[m1$points_in_vertex[[i]]]))
-      v.size[i] <- length((m1$points_in_vertex[[i]]))
-    }
-    #sum(v.size)
-    V(mapper_graph)
-    V(mapper_graph)$color <- subcoloring(mapper_filter, v.mean)
-    if (max(v.size) == min(v.size))  {V(mapper_graph)$size <- rep(10, times = n) 
-    } else {
-      V(mapper_graph)$size <- ((v.size-min(v.size))/(max(v.size) - min(v.size))*12) + 10
-    } 
-    V(mapper_graph)$label <- v.size
+    vertex_mean = sapply(X = m1$points_in_vertex, FUN = function(x) mean(mapper_filter[x]))
+    vertex_size = sapply(X = m1$points_in_vertex, FUN = length)
     l <- as.data.frame(layout_with_fr(mapper_graph))
     colnames(l) = c("x", "y")
-    return(list(mapper_graph = mapper_graph, num_vertices = n, vertex_size = v.size, layout = l,
-                points_in_vertex = m1$points_in_vertex, vertex_mean = v.mean))
+    return(list(mapper_graph = mapper_graph, num_vertices = n, vertex_size = vertex_size, layout = l,
+                points_in_vertex = m1$points_in_vertex, vertex_mean = vertex_mean))
+  })
+  
+  #### arrumar o layout!! ----
+  
+  Input_layout = reactive({
+    mapper_graph = Input_mapper$mapper_graph
   })
   
   #### *CLICKS! ----
@@ -421,7 +484,7 @@ server <- function(input, output, session) {
   output$contents <- renderTable(digits = 5, rownames = TRUE, {
     if (input$customorexamples == "custom") req(input$file1)
     df = Input_df()
-    if(input$disp == "head") {return(head(df))} else {return(df)}
+    if (input$disp == "head") {return(head(df))} else {return(df)}
   })
   
   output$summary_contents <- renderPrint({
@@ -445,7 +508,7 @@ server <- function(input, output, session) {
     } 
     else if (input$mapper_filter == "column") {
       selectInput("mapper_filter_column", "Choose column", choices = colnames(df), selected = colnames(df)[1], multiple = FALSE)
-    } else if (input$mapper_filter == "dtm"){
+    } else if (input$mapper_filter == "dtm") {
       numericInput("dtm_k", "Choose k", value = 2, min = 1, max = nrow(df))
     } else {
       tagList(
@@ -482,54 +545,49 @@ server <- function(input, output, session) {
     plot_ly(x = df[,1], y = df[,2], z = df[,3], size = 3)
   })
   
+  #### mapper plots ---- 
+  
   output$plot_mapper <- renderPlot({
     L = Input_mapper()
     mapper_graph = L$mapper_graph
     n = L$num_vertices
-    v.size = L$vertex_size
+    vertex_size = L$vertex_size
     l = L$layout
-    v.mean = L$vertex_mean
-    l[,1] = l[,1]*2
+    vertex_mean = L$vertex_mean
+    #    l[,1] = l[,1]*2
+    if (input$mapper_filter == "column") legend = input$mapper_filter_column else legend = "filter"
     ggraph(mapper_graph, layout = l) + 
-      geom_edge_link() + geom_node_point(aes(size = v.size, color = v.mean)) +
-      scale_color_gradientn(colours = jet.colors(n)) + scale_radius(range=c(3,10))
+      geom_edge_link() + geom_node_point(aes(color = vertex_mean, size = vertex_size)) +
+      scale_color_gradientn(colours = jet.colors(n)) + scale_radius(range = c(3,10)) + 
+      labs(color = legend, size = "size")
   })
   
-  #### ggpairs ----
-  output$plot_ggpairs <- renderPlot({
-    df = as.data.frame(Input_df())
-    ffc = Input_ffc()
-    ggpairs(df[, 1:3]) #, col = coloring(ffc))
-  })
   
-  #### mapper plots ----
   output$plot_mapper_colored_as_filter <- renderPlot({
     L = Input_mapper()
     mapper_graph = L$mapper_graph
     n = L$num_vertices
-    v.size = L$vertex_size
+    vertex_size = L$vertex_size
     l = L$layout
     points_in_vertex = L$points_in_vertex
-    num_intervals = input$num_intervals
+    #    num_intervals = input$num_intervals
     ffc = Input_ffc()
-    v.mean <- rep(0, n)
+    
+    if (input$ffc == "column") legend = input$ffc_column else legend = "filter"
+    
     if (is.numeric(ffc)) {
-      for (i in 1:n) {
-        v.mean[i] <- mean((ffc[points_in_vertex[[i]]]))
-      }
-      V(mapper_graph)$color <- subcoloring(ffc, v.mean)  #y.mean.vertex.grey
-      c = cut(c(v.mean, min(ffc), max(ffc)), breaks = 100, include.lowest = TRUE, labels = FALSE)
+      vertex_mean <- sapply(X = points_in_vertex, FUN = function(x) mean(ffc[x]))
+      c = cut(c(vertex_mean, min(ffc), max(ffc)), breaks = 100, include.lowest = TRUE, labels = FALSE)
       c = c[1:n]
-      
       ggraph(mapper_graph, layout = l) + 
-        geom_edge_link() + geom_node_point(aes(size = v.size, color = v.mean)) +
-        scale_color_gradientn(colours = jet.colors(100)[min(c):max(c)]) + scale_radius(range=c(3,10))
+        geom_edge_link() + geom_node_point(aes(color = vertex_mean, size = vertex_size)) +
+        scale_color_gradientn(colours = jet.colors(100)[min(c):max(c)]) + scale_radius(range = c(3,10)) + 
+        labs(color = legend, size = "size")
     } else {
-      for (i in 1:n) {
-        v.mean[i] <- majority((ffc[points_in_vertex[[i]]]))
-      }
+      vertex_mean <- sapply(X = points_in_vertex, FUN = function(x) majority(ffc[x]))
       ggraph(mapper_graph, layout = l) + 
-        geom_edge_link() + geom_node_point(aes(size = v.size, color = as.factor(v.mean))) + scale_radius(range=c(3,10))
+        geom_edge_link() + geom_node_point(aes(color = as.factor(vertex_mean), size = vertex_size)) + scale_radius(range = c(3,10)) +
+        labs(color = legend, size = "size")
     }
     
   })
@@ -538,7 +596,7 @@ server <- function(input, output, session) {
     if (input$customorexamples == "custom") req(input$file1)
     df = Input_df()
     mapper_filter = Input_mapper_filter()
-    if (input$distance == "geodesic" & ncol(df) == 3){
+    if (input$distance == "geodesic" & ncol(df) == 3) {
       grafo = Input_rnggraph()
       arestas = arestas = get.edges(grafo, 1:ecount(grafo))
       df1 = df[arestas[,1], ]
@@ -561,19 +619,11 @@ server <- function(input, output, session) {
     
   })
   
-  #### persistent homology ----
-  
-  # output$ph = renderPlot({
-  #   distance_matrix = Input_distance()
-  #   p = calculate_homology(mat = distance_matrix, dim = 1, format = "distmat")
-  #   plot_persist(p)
-  # })
-  
   output$plot_data_colored_as_filter <- renderPlotly({
     if (input$customorexamples == "custom") req(input$file1)
     df = Input_df()
     ffc = Input_ffc()
-    if (!is.character(ffc)){
+    if (!is.character(ffc)) {
       plot_ly(x = df[,1], y = df[,2], z = df[,3], 
               color = ffc, colors = jet.colors(100), size = 3)  
     } else {
@@ -581,6 +631,109 @@ server <- function(input, output, session) {
     }
     
   })
+  
+  #### ball mapper ----
+  output$ffbm_column_ui = renderUI({
+    if (input$customorexamples == "custom") req(input$file1)
+    n = ncol(Input_df())
+    df = Input_df()
+    df_crude = Input_df_crude()[[1]]
+    
+    if (input$ffbm == "svd") {
+      numericInput("ffbm_column", "Choose column", value = 1, min = 1, max = n)
+    } 
+    else if (input$ffbm == "column") {
+      selectInput("ffbm_column", "Choose column", choices = colnames(df_crude), selected = colnames(df)[1], multiple = FALSE)
+    } else {
+      tagList(
+        numericInput("ffbm_excentricity_exponent", "Exponent", value = 2, min = 1, step = 0.1),
+        checkboxInput("ffbm_excentricity_exponent_infinity", "Infinity?")
+      )
+    }
+  })
+  
+  Input_ffbm = reactive({
+    df_crude = Input_df_crude()[[1]]
+    df = Input_df()
+    i = input$ffbm_column
+    distance_matrix = Input_distance()
+    
+    if (input$ffbm == "svd"){
+      ffbm = (svd(df)$u)[, i]
+    }
+    if (input$ffbm == "column"){
+      ffbm = df_crude[, i]
+    }
+    if (input$ffbm == "excentricity"){
+      if (input$ffbm_excentricity_exponent_infinity == TRUE) p = 0 else p = input$ffbm_excentricity_exponent
+      ffbm = excentricity_filter(distance_matrix, p)
+    }
+    if (input$ffbm == "density"){
+      ffbm = density_filter(distance_matrix)
+    }
+    return(ffbm)
+  }) 
+  
+  Input_ballmapper = reactive({
+    distance_matrix = Input_distance()
+    epsilon = input$epsilon
+    id = fps_with_dist_matrix(M = distance_matrix, epsilon)
+    L = ball_mapper(M = distance_matrix, epsilon, id)
+    ballmapper_graph = L[[1]]
+    points_in_vertex = L[[2]]
+    vertex_size = sapply(X = points_in_vertex, length) 
+    n = vcount(ballmapper_graph)
+    return(list(ballmapper_graph = ballmapper_graph, points_in_vertex = points_in_vertex, 
+           vertex_size = vertex_size, n = n))
+  })
+  
+  Input_layoutbm = reactive({
+    ballmapper_graph = Input_ballmapper()$ballmapper_graph
+    l = layout_with_fr(ballmapper_graph)
+    return(l)
+  })
+  
+  output$plot_ballmapper = renderPlot({
+    ffbm = Input_ffbm()
+    L = Input_ballmapper()
+    ballmapper_graph = L$ballmapper_graph
+    points_in_vertex = L$points_in_vertex
+    vertex_size = L$vertex_size
+    n = L$n
+    l = Input_layoutbm()
+    
+    if (input$ffbm == "column") legend = input$ffbm_column else legend = "filter"
+    
+    if (is.numeric(ffbm)) {
+      vertex_mean <- sapply(X = points_in_vertex, FUN = function(x) mean(ffbm[x]))
+      c = cut(c(vertex_mean, min(ffbm), max(ffbm)), breaks = 100, include.lowest = TRUE, labels = FALSE)
+      c = c[1:n]
+      ggraph(ballmapper_graph, layout = l) + 
+        geom_edge_link() + geom_node_point(aes(color = vertex_mean, size = vertex_size)) +
+        scale_color_gradientn(colours = jet.colors(100)[min(c):max(c)]) + scale_radius(range = c(3,10)) + 
+        labs(color = legend, size = "size")
+    } else {
+      vertex_mean <- sapply(X = points_in_vertex, FUN = function(x) majority(ffbm[x]))
+      ggraph(ballmapper_graph, layout = l) + 
+        geom_edge_link() + geom_node_point(aes(color = as.factor(vertex_mean), size = vertex_size)) + scale_radius(range = c(3,10)) +
+        labs(color = legend, size = "size")
+    }
+    
+  })
+  
+  #### ggpairs ----
+  output$plot_ggpairs <- renderPlot({
+    df = as.data.frame(Input_df())
+    ffc = Input_ffc()
+    ggpairs(df[, 1:3]) #, col = coloring(ffc))
+  })
+  
+  #### persistent homology ----
+  # output$ph = renderPlot({
+  #   distance_matrix = Input_distance()
+  #   p = calculate_homology(mat = distance_matrix, dim = 1, format = "distmat")
+  #   plot_persist(p)
+  # })
 }
 
 shinyApp(ui, server)
