@@ -1,4 +1,4 @@
-Package: MapperGUI
+Package: mapperGUI
 Type: Package
 Title: Graphical User Interface for the Mapper and Ball Mapper algorithms.
 Version: 0.1
