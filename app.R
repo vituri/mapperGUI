@@ -1,9 +1,34 @@
+# list_of_packages = c("igraph", "TDAmapper", "shiny", "plotly", "shinythemes", "shinycssloaders",
+#                      "GGally", "ggplot2", "ggraph", "TDAstats", "rgl",
+#                      "cccd", "Matrix", "dplyr", "proxy")
+# lapply(list_of_packages, 
+#        function(x) if(!require(x, character.only = TRUE)) install.packages(x))
+# require(TDAmapper, character.only = TRUE)
+
 library(igraph); library(TDAmapper); library(shiny); library(plotly); library(shinythemes); library(shinycssloaders)
-library(GGally); library(ggplot2); library(grnn); library(ggraph); library(TDAstats) #library(rgl)
-library(cccd); library(Matrix); library(dplyr)
+library(GGally); library(ggplot2);  library(ggraph); library(TDAstats); library(rgl)
+library(cccd); library(Matrix); library(dplyr); library(proxy)
 
 #library("shiny")
 #runGitHub("mapper-GUI", "vituri")
+#devtools::install_github("vituri/mapper-GUI")
+#devtools::install_github("vituri/mapper-GUI", force = TRUE)
+
+#### variables ----
+all_layouts = list(
+  "layout_with_fr", "layout_with_mds", "layout_with_dh", "layout_with_gem",
+  "layout_with_graphopt", "layout_with_kk", "layout_with_lgl",  "layout_with_drl",
+  "layout_as_star", "layout_as_tree", "layout_in_circle", "layout_nicely",
+  "layout_on_grid", "layout_on_sphere", "layout_randomly")
+
+dist_list = list("Euclidean", "Graph walk", "Manhattan", "supremum", "Geodesic", "Canberra", 
+                 "Mahalanobis", "divergence", "Kullback",
+                 "Bray", "Soergel", "Levenshtein", "Podani", "Chord",
+                 "Whittaker", "Hellinger", "Bhjattacharyya", "fJaccard")
+
+jet.colors <- #nice color pallete
+  colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan",
+                     "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
 
 #### functions ----
 normalize <- function(x) {
@@ -85,11 +110,6 @@ torus_sample = function(n){
   v = runif(n, min = 0, max = 2*pi)
   return(data.frame(x = (2 + cos(v))*cos(u), y = (2 + cos(v))*sin(u), z = sin(v)))
 }
-
-#### jetcolors ---- 
-jet.colors <- #nice color pallete
-  colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan",
-                     "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
 
 coloring = function(f){ #gives the coloring of a filter
   jet.colors(100)[cut(f, breaks = 100, include.lowest = TRUE, labels = FALSE)]
@@ -191,7 +211,7 @@ ui = navbarPage(title = "Mapper", theme = shinytheme("spacelab"),
                                               tagList(
                                                 checkboxInput("fps_check", "Select fewer points?", value = TRUE),
                                                 conditionalPanel(condition = "input.fps_check",
-                                                                 numericInput("fps_points", "Number of points", value = 2000, min = 1, max = 20000)
+                                                                 numericInput("fps_points", "Number of points", value = 2000, min = 1, max = 40000)
                                                 )
                                               )
                              ),
@@ -219,6 +239,8 @@ ui = navbarPage(title = "Mapper", theme = shinytheme("spacelab"),
                                         sliderInput("overlap", "% overlap", 50, min = 1, max = 100),
                                         numericInput("num_intervals", "Number of intervals", 10, min = 1, max = 500),
                                         numericInput("bins", "Bins when clustering", 12, min = 1, max = 1000),
+                                        selectInput("mapper_layout", "Graph layout", all_layouts, 
+                                                    selected = "layout_with_fr"),
                                         selectInput("mapper_filter", "Filter function:",
                                                     c("Singular Value Decomposition" = "svd",
                                                       "Data Column" = "column", "Excentricity" = "excentricity",
@@ -229,9 +251,8 @@ ui = navbarPage(title = "Mapper", theme = shinytheme("spacelab"),
                                           uiOutput("mapper_filter_column_ui")  
                                         ),
                                         selectInput("distance", "Distance:",
-                                                    c("Euclidean" = "euclidean", "Geodesic" = "geodesic", "Maximum" = "maximum", 
-                                                      "Manhattan" = "manhattan", "Canberra" = "canberra", "Cosine" = "cosine"),
-                                                    selected = "euclidean")
+                                                    dist_list,
+                                                    selected = "Euclidean")
                            ),
                            mainPanel("Plot mapper", 
                                      plotOutput("plot_mapper") %>% withSpinner(), #click = "mapper_click", hover = "mapper_hover")
@@ -261,7 +282,7 @@ ui = navbarPage(title = "Mapper", theme = shinytheme("spacelab"),
                            mainPanel("Coloring mapper", 
                                      plotOutput("plot_mapper_colored_as_filter") %>% withSpinner(),
                                      plotlyOutput("plot_data_colored_as_filter") %>% withSpinner()#,
-#                                     plotOutput("plot_ggpairs", width = "auto") %>% withSpinner()
+                                     #                                     plotOutput("plot_ggpairs", width = "auto") %>% withSpinner()
                                      #                                     verbatimTextOutput("hover"),
                                      #                                     verbatimTextOutput("click")
                            )
@@ -293,6 +314,7 @@ server <- function(input, output, session) {
   
   #### INPUTS! ----
   
+  #### *df_crude ----
   Input_df_crude <- reactive({ #dataframe that changes when any option the first panel changes
     if (input$customorexamples == "custom") {
       req(input$file1)
@@ -312,6 +334,7 @@ server <- function(input, output, session) {
     return(list(df_crude, nrow(df_crude), ncol(df_crude))) 
   })
   
+  #### *df ----
   Input_df <- reactive({
     if (input$customorexamples == "custom") req(input$file1)
     df_temp <- Input_df_crude()[[1]]
@@ -328,58 +351,55 @@ server <- function(input, output, session) {
            zscore = {df <- scale(df_temp)}
     )
     
-    if (input$fps_check == TRUE & (input$fps_points < Input_df_crude()[[2]])){
+    if (input$fps_check == TRUE & (input$fps_points < Input_df_crude()[[2]])) {
       id = farthestpoints(M = df, p = input$fps_points)
       df = df[id,]
     }
     return(df)
   })
   
-  #### rgn graph ----
+  #### *rgn graph ----
   
   Input_rnggraph = reactive({
     if (input$customorexamples == "custom") req(input$file1)
     df = Input_df()
-    if (input$distance == "geodesic"){
+    if (input$distance == "Graph walk") {
       grafo = rng(x = df, k = 6)
       return(grafo)}
   })
   
-  #### distance ----
+  #### *distance ----
   Input_distance = reactive({
     if (input$customorexamples == "custom") req(input$file1)
     df = Input_df()
-    if (input$distance == "geodesic") {
+    if (input$distance == "Graph walk") {
       grafo = Input_rnggraph()
       distance_matrix = distances(grafo)
-    } else if (input$distance == "cosine") {
-      distance_matrix = cosine_distance(df)
-    } else {
-      distance_matrix = as.matrix(dist(df, method = input$distance, diag = TRUE, upper = TRUE))
-    }
+    } else distance_matrix = proxy::dist(df, df, method = input$distance) # dist(df, method = input$distance, diag = TRUE, upper = TRUE))
+    
     return(distance_matrix)
   })
   
-  #### filters ----
+  #### *filters ----
   
   Input_mapper_filter = reactive({
     df = Input_df()
     i = input$mapper_filter_column
     distance_matrix = Input_distance()
-    if (input$mapper_filter == "svd"){
+    if (input$mapper_filter == "svd") {
       mapper_filter = (svd(df)$u)[, i]
     }
-    if (input$mapper_filter == "column"){
+    if (input$mapper_filter == "column") {
       mapper_filter = df[, i]
     }
-    if (input$mapper_filter == "excentricity"){
+    if (input$mapper_filter == "excentricity") {
       if (input$excentricity_exponent_infinity == TRUE) p = 0 else p = input$excentricity_exponent
       mapper_filter = excentricity_filter(distance_matrix, p)
     }
-    if (input$mapper_filter == "density"){
+    if (input$mapper_filter == "density") {
       mapper_filter = density_filter(distance_matrix)
     }
-    if (input$mapper_filter == "dtm"){
+    if (input$mapper_filter == "dtm") {
       mapper_filter = dtm_filter(distance_matrix, input$dtm_k)
     }
     return(mapper_filter)
@@ -407,7 +427,7 @@ server <- function(input, output, session) {
     return(ffc)
   }) 
   
-  #### mapper ----
+  #### *mapper ----
   
   Input_mapper = reactive({
     df = Input_df()
@@ -427,19 +447,20 @@ server <- function(input, output, session) {
     n <- m1$num_vertices
     vertex_mean = sapply(X = m1$points_in_vertex, FUN = function(x) mean(mapper_filter[x]))
     vertex_size = sapply(X = m1$points_in_vertex, FUN = length)
-    l <- as.data.frame(layout_with_fr(mapper_graph))
-    colnames(l) = c("x", "y")
-    return(list(mapper_graph = mapper_graph, num_vertices = n, vertex_size = vertex_size, layout = l,
+    return(list(mapper_graph = mapper_graph, num_vertices = n, vertex_size = vertex_size,
                 points_in_vertex = m1$points_in_vertex, vertex_mean = vertex_mean))
   })
   
-  #### arrumar o layout!! ----
+  #### *layout!! ----
   
-  Input_layout = reactive({
-    mapper_graph = Input_mapper$mapper_graph
+  Input_mapper_layout = reactive({
+    mapper_graph = Input_mapper()$mapper_graph
+    l = as.data.frame(do.call(what = input$mapper_layout, args = list(mapper_graph)))
+    colnames(l) = c("x", "y")
+    return(l)
   })
   
-  #### *CLICKS! ----
+  #### CLICKS! ----
   selected_points <- reactiveValues(pts = NULL)
   hover_points <- reactiveValues(pts = NULL)
   
@@ -545,14 +566,14 @@ server <- function(input, output, session) {
     plot_ly(x = df[,1], y = df[,2], z = df[,3], size = 3)
   })
   
-  #### mapper plots ---- 
+  #### *mapper plots ---- 
   
   output$plot_mapper <- renderPlot({
     L = Input_mapper()
     mapper_graph = L$mapper_graph
     n = L$num_vertices
     vertex_size = L$vertex_size
-    l = L$layout
+    l = Input_mapper_layout()
     vertex_mean = L$vertex_mean
     #    l[,1] = l[,1]*2
     if (input$mapper_filter == "column") legend = input$mapper_filter_column else legend = "filter"
@@ -568,7 +589,7 @@ server <- function(input, output, session) {
     mapper_graph = L$mapper_graph
     n = L$num_vertices
     vertex_size = L$vertex_size
-    l = L$layout
+    l = Input_mapper_layout()
     points_in_vertex = L$points_in_vertex
     #    num_intervals = input$num_intervals
     ffc = Input_ffc()
@@ -596,7 +617,7 @@ server <- function(input, output, session) {
     if (input$customorexamples == "custom") req(input$file1)
     df = Input_df()
     mapper_filter = Input_mapper_filter()
-    if (input$distance == "geodesic" & ncol(df) == 3) {
+    if (input$distance == "Graph walk" & ncol(df) == 3) {
       grafo = Input_rnggraph()
       arestas = arestas = get.edges(grafo, 1:ecount(grafo))
       df1 = df[arestas[,1], ]
@@ -684,7 +705,7 @@ server <- function(input, output, session) {
     vertex_size = sapply(X = points_in_vertex, length) 
     n = vcount(ballmapper_graph)
     return(list(ballmapper_graph = ballmapper_graph, points_in_vertex = points_in_vertex, 
-           vertex_size = vertex_size, n = n))
+                vertex_size = vertex_size, n = n))
   })
   
   Input_layoutbm = reactive({
