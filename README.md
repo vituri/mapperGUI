@@ -111,7 +111,7 @@ Notice that the table showing in your right is going to be your metric space for
 - **Filter function** There are some filter functions available:
   - **Singular value decomposition** Chosse the column of the singular value decomposition matrix. This filter is a "good projection" of your data into the real line.
   - **Data column** Select a data column to use as filter.
-  - **Excentricity** How far your point is from the "center" of your data? 
+  - **Excentricity** How far your point is from the "center" of your data.
   - **Distance to measure**
   - **Density** Are there many points close to a given point in your data? High values mean many points.
   
