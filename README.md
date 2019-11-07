@@ -108,17 +108,15 @@ Notice that the table showing in your right is going to be your metric space for
 
 - **Graph layout** A list with several layouts for the mapper graph. See the details here: https://igraph.org/r/doc/
 
-- **Filter function** There are some filter functions available:
+- **Filter function** There are some filter functions available. See http://danifold.net/mapper/filters.html for details.
   - **Singular value decomposition** Chosse the column of the singular value decomposition matrix. This filter is a "good projection" of your data into the real line.
   - **Data column** Select a data column to use as filter.
   - **Excentricity** How far your point is from the "center" of your data.
   - **Distance to measure**
   - **Density** Are there many points close to a given point in your data? High values mean many points.
-  
- See http://danifold.net/mapper/filters.html for details.
  
 - **Distance** The distance used in the calculations. All the filter functions (except "data column") will use this distance in the calculations. 
-  - **Graph walk** Construct the Relative Neighborhood Graph of your metric space and calculate the geodesic distance of this graph (the distance between two points is the lenght of the shortest path between them). If your data has 3 dimensions, the graph will be plotted along with your data. Try this with the flamingo dataset, for example.
+  - **Graph walk** Construct the Relative Neighborhood Graph (https://en.wikipedia.org/wiki/Relative_neighborhood_graph) of your metric space and calculate the geodesic distance of this graph (the distance between two points is the lenght of the shortest path between them). If your data has 3 dimensions, the graph will be plotted along with your data. Try this with the flamingo dataset, for example.
 ![geodesic graph example](pics/geodesic-example.png) 
   - **Euclidean and all others** are taken from the proxy package. Read the description here: https://github.com/cran/proxy/blob/master/R/dissimilarities.R
 
